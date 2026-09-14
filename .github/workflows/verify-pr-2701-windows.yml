@@ -1,0 +1,33 @@
+name: Verify PR 2701 Windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: james-elicx/vite-plus
+          ref: codex/fix-windows-legacy-installer-bytes
+          persist-credentials: false
+
+      - name: Verify byte-array legacy fallback
+        shell: pwsh
+        run: ./.github/scripts/test-install-bootstrap.ps1
+
+      - name: Verify live octet-stream legacy fallback
+        shell: pwsh
+        run: |
+          $env:VP_VERSION = '0.2.9'
+          $env:VP_HOME = Join-Path $env:RUNNER_TEMP 'vite-plus-live'
+          $env:VP_LEGACY_INSTALLER_URL = 'https://viteplus.dev/install-legacy.ps1'
+          $scriptPath = Join-Path $env:RUNNER_TEMP 'install.ps1'
+          Get-Content ./packages/cli/install.ps1 -Raw | Set-Content -LiteralPath $scriptPath -NoNewline
+          & $scriptPath
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$env:VP_HOME\bin\vp.exe" --version
